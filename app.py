@@ -7,9 +7,6 @@ import os
 import io
 from pydub import AudioSegment
 from assessment_engine import assess_pronunciation
-import imageio_ffmpeg as ffmpeg
-
-AudioSegment.converter = ffmpeg.get_ffmpeg_exe()
 
 app = Flask(__name__)
 
@@ -29,15 +26,12 @@ def assess():
     temp_audio_path = "temp_audio.wav"
 
     try:
-        # ใช้ Pydub อ่านข้อมูลเสียงจาก Memory
         audio_segment = AudioSegment.from_file(io.BytesIO(audio_data))
         
-        # ตั้งค่า Format เสียงให้ตรงตามที่ Azure ต้องการ
         audio_segment = audio_segment.set_channels(1)
         audio_segment = audio_segment.set_frame_rate(16000)
         audio_segment = audio_segment.set_sample_width(2)
         
-        # Export เป็นไฟล์ WAV ที่ถูกต้อง
         audio_segment.export(temp_audio_path, format="wav")
 
     except Exception as e:
