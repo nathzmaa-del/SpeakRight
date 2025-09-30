@@ -2,3 +2,4 @@ Flask==3.0.0
 gunicorn==21.2.0
 azure-cognitiveservices-speech==1.33.0
 python-dotenv==1.1.1
+imageio-ffmpeg
