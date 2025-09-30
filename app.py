@@ -8,6 +8,11 @@ import io
 from pydub import AudioSegment
 from assessment_engine import assess_pronunciation
 
+# --- ส่วนที่เพิ่มเข้ามาเพื่อแก้ปัญหา ---
+# บังคับให้ Pydub รู้จักที่อยู่ของ FFmpeg ที่ติดตั้งบนเซิร์ฟเวอร์ Render
+AudioSegment.converter = "/usr/bin/ffmpeg"
+# ------------------------------------
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -26,7 +31,8 @@ def assess():
     temp_audio_path = "temp_audio.wav"
 
     try:
-        audio_segment = AudioSegment.from_file(io.BytesIO(audio_data))
+        audio_stream = io.BytesIO(audio_data)
+        audio_segment = AudioSegment.from_file(audio_stream)
         
         audio_segment = audio_segment.set_channels(1)
         audio_segment = audio_segment.set_frame_rate(16000)
