@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>พูดชัด - PoodChat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Mitr', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .font-en { font-family: 'Nunito', sans-serif; }
+        .screen { display: none; }
+        .active { display: flex; }
+        .speech-bubble { position: relative; background: #e0f2f1; border-radius: .4em; padding: 10px; }
+        .speech-bubble:after { content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 0; border: 20px solid transparent; border-top-color: #e0f2f1; border-bottom: 0; border-left: 0; margin-left: -10px; margin-bottom: -20px; }
+        .modal-container { display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center;}
+        .modal-active { display: flex; }
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body class="bg-sky-50 text-slate-800 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-sm mx-auto bg-white rounded-2xl shadow-xl p-4 overflow-hidden relative">
+        <!-- Header -->
+        <div id="app-header" class="w-full flex justify-between items-center mb-4 hidden">
+            <button id="back-button" onclick="goBack()" class="p-2 text-slate-400 hover:text-teal-500">
+                <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+            </button>
+            <div class="flex items-center space-x-2">
+                <!-- ปุ่มดูพัฒนาการ -->
+                <button id="progress-button" onclick="showProgress()" class="p-2 text-slate-400 hover:text-teal-500 hidden" title="ดูพัฒนาการ">
+                    <i data-lucide="line-chart" class="w-7 h-7"></i>
+                </button>
+                <div id="star-bank" class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-lg font-bold flex items-center space-x-1 shadow-sm">
+                    <span>⭐️</span>
+                    <span id="star-count">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- หน้าจอต่างๆ (ส่วนใหญ่เหมือนเดิม) -->
+        <div id="screen-splash" class="screen active flex-col items-center justify-center text-center p-8 space-y-6 min-h-[500px]">
+             <h1 class="text-4xl font-bold text-teal-600">พูดชัด</h1>
+             <div class="relative">
+                <div class="speech-bubble mb-8">
+                    <p class="text-teal-800 font-semibold">"ทุกคำพูดที่ชัดเจน เริ่มต้นจากการฝึกฝนก้าวแรก"</p>
+                </div>
+                <p class="text-8xl">🦜</p>
+             </div>
+            <p class="text-slate-500">มาฝึกออกเสียงให้เป๊ะปัง<br>กับพี่นกแก้ว "ชัดเจน" กันเถอะ!</p>
+            <button onclick="showScreen('language')" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 px-6 rounded-xl text-xl shadow-lg transform hover:scale-105 transition-transform duration-300">
+                เริ่มฝึกพูดเลย!
+            </button>
+        </div>
+        
+        <div id="screen-language" class="screen flex-col items-center p-4 space-y-4">
+            <h2 class="text-2xl font-semibold">อยากฝึกภาษาอะไรเอ่ย?</h2>
+            <div class="w-full space-y-4">
+                <button onclick="selectLanguage('th-TH')" class="w-full flex items-center space-x-4 bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-slate-800 p-4 rounded-xl shadow-md transform hover:scale-105 transition-all duration-300">
+                    <img src="https://flagcdn.com/w40/th.png" alt="Thai Flag" class="w-10">
+                    <div class="text-left">
+                        <span class="text-2xl font-bold">ภาษาไทย</span>
+                        <span class="block text-xs text-slate-400">วิเคราะห์ผลระดับคำ</span>
+                    </div>
+                </button>
+                <button onclick="selectLanguage('en-US')" class="w-full flex items-center space-x-4 bg-white border-2 border-slate-200 hover:border-red-500 hover:bg-red-50 text-slate-800 p-4 rounded-xl shadow-md transform hover:scale-105 transition-all duration-300">
+                     <img src="https://flagcdn.com/w40/us.png" alt="US Flag" class="w-10">
+                     <div class="text-left">
+                        <span class="text-2xl font-bold font-en">English</span>
+                        <span class="block text-xs text-slate-400 font-sans">Detailed Phoneme Analysis</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <div id="screen-words" class="screen flex-col items-center p-2">
+            <h2 id="word-list-title" class="text-2xl font-semibold mb-4">เลือกคำที่อยากฝึก</h2>
+            <div id="word-grid" class="w-full grid grid-cols-3 gap-3"></div>
+        </div>
+        
+        <!-- หน้าจอใหม่: Progress Screen -->
+        <div id="screen-progress" class="screen flex-col items-center p-2">
+            <h2 class="text-2xl font-semibold mb-4">สมุดพกคะแนน</h2>
+            <div id="progress-list" class="w-full space-y-2 max-h-[400px] overflow-y-auto">
+                <!-- Progress items will be injected here -->
+            </div>
+        </div>
+
+        <!-- เนื้อหา HTML อื่นๆ เหมือนเดิม -->
+        <div id="screen-assess" class="screen flex-col items-center p-4 space-y-4 text-center">
+            <div class="w-full flex justify-center items-center relative">
+                <h2 class="text-xl font-semibold">ฝึกพูดคำว่า...</h2>
+                <button onclick="playExampleSound()" class="absolute right-0 p-2 text-slate-400 hover:text-teal-500" title="ฟังเสียงตัวอย่าง">
+                    <i data-lucide="volume-2" class="w-8 h-8"></i>
+                </button>
+            </div>
+            <div id="assess-word-display" class="bg-teal-100 text-teal-800 text-4xl md:text-5xl font-bold p-6 rounded-2xl w-full break-words"></div>
+            <div id="assess-phonetic-display" class="text-slate-500 text-lg"></div>
+            <p id="mascot-assess" class="text-6xl">🦜</p>
+            <p id="assess-status" class="text-slate-500 h-6 flex items-center justify-center">กดปุ่มเพื่อเริ่มอัดเสียง</p>
+            <div class="w-full text-center text-slate-600 bg-slate-100 p-3 rounded-lg">
+                <p class="font-bold text-sm">ตัวอย่างการใช้ในประโยค:</p>
+                <p id="assess-sentence-display" class="italic"></p>
+            </div>
+            <div class="w-full flex items-center justify-center space-x-4">
+                <button id="mic-button" onclick="toggleRecording()" class="w-20 h-20 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-xl transform hover:scale-110 transition-transform duration-300 text-white">
+                    <i data-lucide="mic" class="w-10 h-10"></i>
+                </button>
+                <button id="retake-button" onclick="retakeRecording()" class="w-20 h-20 bg-amber-500 hover:bg-amber-600 rounded-full flex items-center justify-center shadow-xl transform hover:scale-110 transition-transform duration-300 text-white hidden">
+                    <i data-lucide="rotate-cw" class="w-10 h-10"></i>
+                </button>
+                <button id="send-button" onclick="sendAudio()" class="w-20 h-20 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center shadow-xl transform hover:scale-110 transition-transform duration-300 text-white hidden">
+                    <i data-lucide="send" class="w-10 h-10"></i>
+                </button>
+            </div>
+            <div class="w-full pt-4 text-center">
+                <div id="upload-info" class="text-sm text-slate-600 bg-slate-100 p-2 rounded-lg hidden items-center justify-between">
+                    <span id="file-name" class="truncate"></span>
+                    <button onclick="cancelUpload()" class="p-1 text-red-500 hover:text-red-700">
+                        <i data-lucide="x-circle" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <label for="audio-upload" class="cursor-pointer text-teal-600 hover:text-teal-800 underline mt-2 inline-block">
+                    หรืออัปโหลดไฟล์เสียง (.wav)
+                </label>
+                <input type="file" id="audio-upload" accept="audio/wav" onchange="handleFileUpload(event)">
+            </div>
+        </div>
+        <div id="screen-result" class="screen flex-col items-center p-4 space-y-4 text-center">
+             <div class="w-full flex justify-center items-center relative">
+                <h2 class="text-2xl font-semibold">ผลลัพธ์</h2>
+                <button onclick="showHelpModal(true)" class="absolute right-0 p-2 text-slate-400 hover:text-teal-500" title="ความหมายของคะแนน">
+                    <i data-lucide="help-circle" class="w-7 h-7"></i>
+                </button>
+            </div>
+            <p id="mascot-result" class="text-8xl">🎉</p>
+            <p id="result-feedback" class="text-xl font-semibold text-green-600">เก่งมากเลย!</p>
+            <div id="result-details" class="w-full bg-slate-100 p-4 rounded-xl space-y-2 text-left text-sm"></div>
+            <div id="result-coaching-prompt" class="w-full bg-amber-100 text-amber-800 p-4 rounded-xl hidden flex-col items-center space-y-3">
+                <h3 class="font-bold">🤔 พยายามอีกนิดนะ!</h3>
+                <p>เข้ามาฝึกกับโค้ช "ชัดเจน" เพื่อดูเทคนิคการออกเสียงที่ถูกต้องกันดีกว่า!</p>
+                <button onclick="startCoaching()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-lg">
+                    เข้าสู่โหมดฝึกสอน
+                </button>
+            </div>
+            <div class="w-full grid grid-cols-2 gap-4 pt-4">
+                <button onclick="retryWord()" class="w-full flex items-center justify-center space-x-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl text-lg transition-colors">
+                    <i data-lucide="rotate-cw"></i> <span>ฝึกอีกครั้ง</span>
+                </button>
+                 <button onclick="showScreen('words')" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-xl text-lg transition-colors">
+                    เลือกคำต่อไป
+                </button>
+            </div>
+        </div>
+        <div id="screen-coaching" class="screen flex-col items-center p-2 space-y-4">
+            <h2 class="text-xl font-semibold text-center">โหมดฝึกสอน<br><span id="coaching-word-title" class="font-bold text-2xl text-teal-600"></span></h2>
+            <div class="w-full bg-slate-800 rounded-lg flex items-center justify-center aspect-video">
+                 <img id="coaching-gif" src="" alt="Acoustic Articulatory Inversion Simulation" class="w-full h-full object-contain">
+            </div>
+            <div class="w-full bg-slate-100 p-4 rounded-lg">
+                <h3 class="font-bold text-lg mb-2">เทคนิคจากโค้ช "ชัดเจน" 🦜:</h3>
+                <p id="coaching-text" class="text-slate-700"></p>
+            </div>
+            <button onclick="retryWord()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 px-6 rounded-xl text-xl shadow-lg">
+                พร้อมแล้ว! ลองฝึกพูดอีกครั้ง
+            </button>
+        </div>
+    </div>
+    <div id="help-modal" class="modal-container" onclick="showHelpModal(false)">
+        <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-md max-h-[80vh] overflow-y-auto p-6" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">ความหมายของผลลัพธ์</h3>
+                <button onclick="showHelpModal(false)" class="p-1"><i data-lucide="x"></i></button>
+            </div>
+            <div class="text-sm space-y-4">
+                <p class="text-xs text-center font-bold text-slate-500">English description is below</p>
+                <div>
+                    <h4 class="font-bold text-teal-600">คะแนนโดยรวม</h4>
+                    <ul class="list-disc list-inside space-y-1 mt-1 text-slate-700">
+                        <li><b>Accuracy Score:</b> ความแม่นยำในการออกเสียงแต่ละหน่วยเสียงเทียบกับเจ้าของภาษา</li>
+                        <li><b>Fluency Score:</b> ความคล่องแคล่วในการพูด วัดจากการเว้นวรรคและจังหวะที่เป็นธรรมชาติ</li>
+                        <li><b>Completeness Score:</b> ความสมบูรณ์ในการพูด บอกว่าเราพูดครบทุกคำในโจทย์หรือไม่</li>
+                        <li><b>Pronunciation Score:</b> คะแนนการออกเสียงโดยรวม คำนวณจากคะแนนทั้งหมด</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-teal-600">ประเภทข้อผิดพลาด (Error Type)</h4>
+                    <ul class="list-disc list-inside space-y-1 mt-1 text-slate-700">
+                        <li><b>None:</b> ไม่มีข้อผิดพลาด เยี่ยมมาก!</li>
+                        <li><b>Mispronunciation:</b> ออกเสียงคำผิดเพี้ยนไปจากต้นฉบับ</li>
+                        <li><b>Omission:</b> ละเลย ไม่ได้ออกเสียงคำที่มีอยู่ในโจทย์</li>
+                        <li><b>Insertion:</b> พูดคำที่ไม่มีอยู่ในโจทย์เพิ่มเข้ามา</li>
+                    </ul>
+                </div>
+                <hr>
+                <div class="font-en">
+                    <h4 class="font-bold text-teal-600">Overall Scores</h4>
+                    <ul class="list-disc list-inside space-y-1 mt-1 text-slate-700">
+                        <li><b>Accuracy Score:</b> How accurately the phonemes were pronounced compared to a native speaker.</li>
+                        <li><b>Fluency Score:</b> The fluency of the speech, based on natural silences and rhythm.</li>
+                        <li><b>Completeness Score:</b> Indicates if all words from the reference text were pronounced.</li>
+                        <li><b>Pronunciation Score:</b> The overall score calculated from all other scores.</li>
+                    </ul>
+                </div>
+                <div class="font-en">
+                    <h4 class="font-bold text-teal-600">Error Types</h4>
+                    <ul class="list-disc list-inside space-y-1 mt-1 text-slate-700">
+                        <li><b>None:</b> No errors found. Great job!</li>
+                        <li><b>Mispronunciation:</b> The word was pronounced differently from the original.</li>
+                        <li><b>Omission:</b> A word from the reference text was skipped.</li>
+                        <li><b>Insertion:</b> An extra word not in the reference text was spoken.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        let currentState = { screen: 'splash', language: null, word: null, previousScreen: 'splash' };
+        let totalStars = 0;
+        let mediaRecorder; let audioChunks = []; let isRecording = false; let audioBlob = null;
+        
+        const wordData = { "ล้อเกวียน": { lang: 'th-TH', icon: 'truck', reading_th: 'ล้อ-เกวียน', phonetic_en: '', sentence_th: 'ล้อเกวียนกำลังหมุน', sentence_en: '' }, "สงคราม": { lang: 'th-TH', icon: 'swords', reading_th: 'สง-คราม', phonetic_en: '', sentence_th: 'สงครามนำมาซึ่งความสูญเสีย', sentence_en: '' }, "ผัดพริกแกง": { lang: 'th-TH', icon: 'vegan', reading_th: 'ผัด-พริก-แกง', phonetic_en: '', sentence_th: 'แม่ทำผัดพริกแกง', sentence_en: '' }, "world": { lang: 'en-US', icon: 'globe-2', reading_th: 'เวิลดฺ', phonetic_en: '/wɜːrld/', sentence_th: '', sentence_en: 'The world is beautiful.' }, "vegetable": { lang: 'en-US', icon: 'carrot', reading_th: 'เว็จ-ทะ-เบิล', phonetic_en: '/ˈvedʒ.tə.bəl/', sentence_th: '', sentence_en: 'Eat your vegetable.' }, "three": { lang: 'en-US', icon: 'star', reading_th: 'ธรี', phonetic_en: '/θriː/', sentence_th: '', sentence_en: 'There are three cats.' }, };
+        const coachingData = { "ล้อเกวียน": { gifUrl: "https://i.imgur.com/your-gif-url.gif", text: "ฝึกออกเสียง 'ล' โดยเอาปลายลิ้นแตะหลังฟันบน แล้วฝึกเสียง 'ว' โดยทำปากจู๋" }, "สงคราม": { gifUrl: "https://i.imgur.com/your-gif-url.gif", text: "สำหรับเสียงควบกล้ำ 'คร' ให้พูดเสียง 'ค' และ 'ร' ให้เร็วและต่อเนื่องกัน" }, "ผัดพริกแกง": { gifUrl: "https://i.imgur.com/your-gif-url.gif", text: "ฝึกเสียง 'ผ' และ 'พ' ให้ต่างกัน โดยเสียง 'ผ' จะมีลมออกมามากกว่า" }, "three": { gifUrl: "https://i.imgur.com/3qH8gU7.gif", text: "สำหรับเสียง 'th' ให้วางปลายลิ้นไว้ระหว่างฟันบนและฟันล่างเล็กน้อย แล้วพ่นลมออกมาเบาๆ" }, "world": { gifUrl: "https://i.imgur.com/3qH8gU7.gif", text: "คำนี้ยากหน่อยนะ! เริ่มจาก 'wor' แล้วม้วนลิ้นสำหรับเสียง 'rl' จากนั้นจบด้วยเสียง 'd' เบาๆ" }, "vegetable": { gifUrl: "https://i.imgur.com/your-gif-url.gif", text: "คำนี้ออกเสียงแค่ 3 พยางค์นะ: VEG-ta-ble ไม่ใช่ 4 พยางค์" } };
+        
+        function showScreen(screenId) {
+            currentState.previousScreen = currentState.screen;
+            currentState.screen = screenId;
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(`screen-${screenId}`).classList.add('active');
+            
+            const header = document.getElementById('app-header');
+            const progressBtn = document.getElementById('progress-button');
+            header.classList.toggle('hidden', screenId === 'splash');
+            progressBtn.classList.toggle('hidden', screenId !== 'words');
+        }
+
+        function goBack() { if (currentState.screen === 'language') showScreen('splash'); else if (currentState.screen === 'words') showScreen('language'); else if (currentState.screen === 'assess') showScreen('words'); else if (currentState.screen === 'result') showScreen('assess'); else if (currentState.screen === 'coaching') showScreen('result'); else if (currentState.screen === 'progress') showScreen('words');}
+        function selectLanguage(langCode) { currentState.language = langCode; document.getElementById('word-list-title').textContent = langCode === 'th-TH' ? 'เลือกคำที่อยากฝึก' : 'Select a word'; document.getElementById('word-list-title').classList.toggle('font-en', langCode === 'en-US'); populateWordGrid(langCode); showScreen('words'); }
+        function populateWordGrid(langCode) { const grid = document.getElementById('word-grid'); grid.innerHTML = ''; Object.keys(wordData).filter(word => wordData[word].lang === langCode).forEach(word => { const data = wordData[word]; const card = document.createElement('button'); card.className = `bg-slate-100 hover:bg-teal-100 p-4 rounded-xl text-center space-y-2 transform hover:scale-105 transition-transform duration-300`; if(langCode === 'en-US') card.classList.add('font-en'); card.onclick = () => selectWord(word); card.innerHTML = `<div class="flex justify-center text-teal-500"><i data-lucide="${data.icon}" class="w-8 h-8"></i></div><div class="text-lg font-semibold">${word}</div>`; grid.appendChild(card); }); lucide.createIcons(); }
+        function selectWord(word) { currentState.word = word; const data = wordData[word]; const display = document.getElementById('assess-word-display'); display.textContent = word; display.classList.toggle('font-en', currentState.language === 'en-US'); const phoneticDisplay = document.getElementById('assess-phonetic-display'); const sentenceDisplay = document.getElementById('assess-sentence-display'); if (currentState.language === 'en-US') { phoneticDisplay.innerHTML = `<span class="font-en">${data.phonetic_en}</span> <span class="text-slate-400">(${data.reading_th})</span>`; sentenceDisplay.textContent = data.sentence_en; sentenceDisplay.classList.add('font-en'); } else { phoneticDisplay.textContent = `คำอ่าน: ${data.reading_th}`; sentenceDisplay.textContent = data.sentence_th; sentenceDisplay.classList.remove('font-en'); } resetRecordingUI(); showScreen('assess'); }
+        function updateStarBank() { document.getElementById('star-count').textContent = totalStars; }
+        function retryWord() { selectWord(currentState.word); }
+        function startCoaching() { const data = coachingData[currentState.word]; if (!data) { alert('ขออภัย, ยังไม่มีข้อมูลการฝึกสอนสำหรับคำนี้'); return; } document.getElementById('coaching-word-title').textContent = currentState.word; document.getElementById('coaching-gif').src = data.gifUrl; document.getElementById('coaching-text').textContent = data.text; showScreen('coaching'); }
+        function playExampleSound() { if (!currentState.word) return; const langFolder = currentState.language === 'th-TH' ? 'th' : 'en'; const audioPath = `/static/audio/${langFolder}/${currentState.word}.mp3`; const audio = new Audio(audioPath); audio.play().catch(e => { console.error("Error playing audio:", e); alert("ขออภัย, ยังไม่มีไฟล์เสียงตัวอย่างสำหรับคำนี้"); }); }
+        async function toggleRecording() { if (isRecording) { mediaRecorder.stop(); isRecording = false; updateUIRecording(false); } else { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); mediaRecorder = new MediaRecorder(stream); mediaRecorder.start(); isRecording = true; audioChunks = []; updateUIRecording(true); mediaRecorder.ondataavailable = event => { audioChunks.push(event.data); }; mediaRecorder.onstop = () => { audioBlob = new Blob(audioChunks, { type: 'audio/wav' }); }; } catch (err) { console.error("Error accessing microphone:", err); alert("ไม่สามารถเข้าถึงไมโครโฟนได้ โปรดตรวจสอบการอนุญาต"); } } }
+        function sendAudio() { if (!audioBlob) { alert("ยังไม่มีเสียงที่อัดไว้"); return; } const status = document.getElementById('assess-status'); status.textContent = "กำลังส่งเสียงไปวิเคราะห์..."; document.getElementById('send-button').disabled = true; document.getElementById('retake-button').disabled = true; const reader = new FileReader(); reader.readAsDataURL(audioBlob); reader.onloadend = async () => { const base64String = reader.result.split(',')[1]; try { const response = await fetch('/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: currentState.language, word: currentState.word, audioBase64: base64String }) }); if (!response.ok) throw new Error(`Server error: ${response.statusText}`); const result = await response.json(); parseAndShowResult(result); } catch (error) { console.error("Error sending audio for assessment:", error); alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์วิเคราะห์เสียง"); resetRecordingUI(); } }; }
+        function updateUIRecording(isRec) { const micButton = document.getElementById('mic-button'); const retakeButton = document.getElementById('retake-button'); const sendButton = document.getElementById('send-button'); const status = document.getElementById('assess-status'); if (isRec) { status.textContent = "กำลังอัดเสียง... (กดอีกครั้งเพื่อหยุด)"; micButton.classList.remove('bg-red-500'); micButton.classList.add('bg-blue-500', 'animate-pulse'); micButton.innerHTML = `<i data-lucide="square" class="w-8 h-8"></i>`; retakeButton.classList.add('hidden'); sendButton.classList.add('hidden'); } else { status.textContent = "อัดเสียงเรียบร้อย! กดส่งหรืออัดใหม่"; micButton.classList.add('hidden'); retakeButton.classList.remove('hidden'); sendButton.classList.remove('hidden'); } lucide.createIcons(); }
+        function resetRecordingUI() { const micButton = document.getElementById('mic-button'); const retakeButton = document.getElementById('retake-button'); const sendButton = document.getElementById('send-button'); const status = document.getElementById('assess-status'); const uploadInfo = document.getElementById('upload-info'); status.textContent = "กดปุ่มเพื่อเริ่มอัดเสียง"; audioBlob = null; isRecording = false; audioChunks = []; document.getElementById('audio-upload').value = ''; uploadInfo.classList.add('hidden'); uploadInfo.classList.remove('flex'); micButton.classList.remove('hidden'); retakeButton.classList.add('hidden'); sendButton.classList.add('hidden'); micButton.disabled = false; micButton.classList.add('bg-red-500'); micButton.classList.remove('bg-blue-500', 'animate-pulse'); micButton.innerHTML = `<i data-lucide="mic" class="w-10 h-10"></i>`; lucide.createIcons(); }
+        function retakeRecording() { resetRecordingUI(); }
+        function showHelpModal(show) { const modal = document.getElementById('help-modal'); modal.classList.toggle('modal-active', show); }
+        function handleFileUpload(event) { const file = event.target.files[0]; if (file) { if (!['audio/wav', 'audio/x-m4a', 'audio/m4a'].includes(file.type)) { alert("โปรดเลือกไฟล์เสียงนามสกุล .wav เท่านั้น"); event.target.value = ''; return; } audioBlob = file; const uploadInfo = document.getElementById('upload-info'); const fileNameEl = document.getElementById('file-name'); fileNameEl.textContent = file.name; uploadInfo.classList.remove('hidden'); uploadInfo.classList.add('flex'); document.getElementById('mic-button').classList.add('hidden'); document.getElementById('retake-button').classList.add('hidden'); document.getElementById('send-button').classList.remove('hidden'); } }
+        function cancelUpload() { resetRecordingUI(); }
+        
+        function showProgress() {
+            const progressList = document.getElementById('progress-list');
+            const history = JSON.parse(localStorage.getItem('poodChatHistory')) || {};
+            
+            progressList.innerHTML = ''; // Clear previous list
+
+            const wordsInCurrentLanguage = Object.keys(wordData).filter(word => wordData[word].lang === currentState.language);
+
+            if (Object.keys(history).length === 0 || wordsInCurrentLanguage.every(word => !history[word])) {
+                progressList.innerHTML = `<p class="text-center text-slate-500 p-4">ยังไม่มีข้อมูลการฝึก<br>มาเริ่มฝึกคำแรกกันเลย!</p>`;
+            } else {
+                wordsInCurrentLanguage.forEach(word => {
+                    const record = history[word];
+                    const score = record ? record.bestScore : '-';
+                    const date = record ? new Date(record.lastTrained).toLocaleDateString('th-TH') : '-';
+                    const scoreColor = score >= 80 ? 'text-green-600' : score >= 60 ? 'text-amber-600' : 'text-red-600';
+
+                    const itemHTML = `
+                        <div class="flex items-center justify-between bg-slate-100 p-3 rounded-lg">
+                            <span class="font-semibold ${wordData[word].lang === 'en-US' ? 'font-en' : ''}">${word}</span>
+                            <div class="text-right">
+                                <span class="font-bold text-lg ${scoreColor}">${score}</span>
+                                <span class="block text-xs text-slate-400">ล่าสุด: ${date}</span>
+                            </div>
+                        </div>
+                    `;
+                    progressList.innerHTML += itemHTML;
+                });
+            }
+            showScreen('progress');
+        }
+        
+        function parseAndShowResult(result) {
+            if (result.error) { alert(`เกิดข้อผิดพลาดจาก AI: ${result.error}`); return; }
+            const nbest = result.NBest[0];
+            const pronAssessment = nbest.PronunciationAssessment;
+            
+            const history = JSON.parse(localStorage.getItem('poodChatHistory')) || {};
+            const currentWord = currentState.word;
+            const score = pronAssessment.AccuracyScore;
+            
+            if (!history[currentWord] || score > history[currentWord].bestScore) {
+                history[currentWord] = {
+                    bestScore: score,
+                    lastTrained: new Date().toISOString()
+                };
+                localStorage.setItem('poodChatHistory', JSON.stringify(history));
+            }
+            
+            const detailsContainer = document.getElementById('result-details'); const errorType = pronAssessment.ErrorType; const errorMessages = { 'None': "ไม่มีข้อผิดพลาดเลยล่ะ!", 'Mispronunciation': "ออกเสียงเพี้ยนไปนิดหน่อยนะ ลองอีกที!", 'Omission': "เหมือนจะลืมพูดบางคำนะ", 'Insertion': "มีเสียงเกินเข้ามานิดนึงนะ" }; let detailsHTML = `<div class="flex justify-between items-center border-b pb-2"><span class="font-semibold">คำที่ฝึก:</span><span class="text-lg font-bold">${currentState.word}</span></div><div class="flex justify-between items-center pt-2"><span class="font-semibold">คะแนนการออกเสียง:</span><span class="text-lg font-bold text-teal-600">${pronAssessment.PronScore} / 100</span></div><div class="flex justify-between items-center text-slate-500"><span>(ความแม่นยำ: ${pronAssessment.AccuracyScore})</span><span>(ความคล่องแคล่ว: ${pronAssessment.FluencyScore})</span></div><div class="flex justify-between items-center text-slate-500"><span>(ความสมบูรณ์: ${pronAssessment.CompletenessScore})</span></div><div class="flex justify-between items-center border-t pt-2 mt-2"><span class="font-semibold">ข้อผิดพลาด:</span><span class="text-lg font-bold">${errorType} <span class="text-sm text-slate-500">(${errorMessages[errorType] || ''})</span></span></div>`; if (currentState.language === 'en-US' && nbest.Words) { detailsHTML += `<div class="border-t pt-2 mt-2"><p class="font-semibold">ผลระดับหน่วยเสียง:</p><div class="flex flex-wrap gap-2 mt-1">`; nbest.Words[0].Phonemes.forEach(p => { const score = p.PronunciationAssessment.AccuracyScore; const color = score > 80 ? 'bg-green-200 text-green-800' : score > 60 ? 'bg-yellow-200 text-yellow-800' : 'bg-red-200 text-red-800'; detailsHTML += `<span class="px-2 py-1 rounded-md text-xs ${color} font-mono">${p.Phoneme}: ${score}</span>`; }); detailsHTML += `</div></div>`; } detailsContainer.innerHTML = detailsHTML; const mascot = document.getElementById('mascot-result'); const feedback = document.getElementById('result-feedback'); const coachingPromptEl = document.getElementById('result-coaching-prompt'); let starsEarned = 0; if (score > 90) starsEarned = 5; else if (score > 80) starsEarned = 4; else if (score > 70) starsEarned = 3; else if (score > 60) starsEarned = 2; else if (score > 50) starsEarned = 1; if (score >= 70) { totalStars += starsEarned; updateStarBank(); } coachingPromptEl.classList.add('hidden'); if (score < 70) { mascot.textContent = "🤔"; feedback.textContent = "พยายามอีกนิดนะ!"; feedback.className = "text-xl font-semibold text-orange-600"; if (coachingData[currentState.word]) { coachingPromptEl.classList.remove('hidden'); } } else { mascot.textContent = "🎉"; feedback.textContent = "สุดยอดไปเลย!"; feedback.className = "text-xl font-semibold text-green-600"; } showScreen('result'); }
+    
+    </script>
+</body>
+</html>
+
