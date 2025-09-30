@@ -8,7 +8,7 @@ load_dotenv() # โหลดค่าจากไฟล์ .env
 # --- อ่านค่าการเชื่อมต่อทั้งหมด ---
 speech_key = os.environ.get('AZURE_SPEECH_KEY')
 service_region = os.environ.get('AZURE_SERVICE_REGION')
-endpoint = os.environ.get('AZURE_SPEECH_ENDPOINT') # <-- ตัวแปรใหม่
+endpoint = os.environ.get('AZURE_SPEECH_ENDPOINT')
 
 def assess_pronunciation(language_code, reference_text, audio_file_path):
     """ฟังก์ชันหลักสำหรับประเมินผล"""
@@ -16,15 +16,11 @@ def assess_pronunciation(language_code, reference_text, audio_file_path):
         return {"error": "Azure Speech credentials are not fully configured."}
     
     try:
-        # --- อัปเกรด Logic การเชื่อมต่อ ---
         if endpoint:
-            # ใช้วิธีเชื่อมต่อผ่าน Endpoint โดยตรง (เสถียรกว่า)
             speech_config = speechsdk.SpeechConfig(subscription=speech_key, endpoint=endpoint)
         else:
-            # ใช้วิธีเชื่อมต่อผ่าน Region (วิธีเดิม)
             speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
-        # --- สิ้นสุดส่วนอัปเกรด ---
-
+        
         speech_config.speech_recognition_language = language_code
 
         audio_config = speechsdk.AudioConfig(filename=audio_file_path)
@@ -47,9 +43,11 @@ def assess_pronunciation(language_code, reference_text, audio_file_path):
             return {"error": "No speech could be recognized."}
         elif result.reason == speechsdk.ResultReason.Canceled:
             cancellation_details = result.cancellation_details
-            # ให้ข้อมูล Error ที่ละเอียดขึ้น
-            return {"error": f"Canceled: {cancellation_details.reason}", "details": f"ErrorCode={cancellation_details.error_code}, ErrorDetails={cancellation_details.error_details}"}
+            # --- ส่วนที่แก้ไข Bug ---
+            # เราจะส่งเฉพาะ reason และ error_details ซึ่งเป็นข้อมูลที่มีอยู่จริง
+            error_details_str = cancellation_details.error_details if hasattr(cancellation_details, 'error_details') else "No further details provided."
+            return {"error": f"Canceled: {cancellation_details.reason}", "details": error_details_str}
+            # --- สิ้นสุดส่วนแก้ไข ---
 
     except Exception as e:
         return {"error": f"An unexpected error occurred: {str(e)}"}
-
